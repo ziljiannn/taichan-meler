@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Taichan Setengah Porsi</title>
+    <title>POS Taichan - Laporan Dana Keluar</title>
     
     <style>
-        /* (CSS tetap sama, hanya menambahkan warna untuk input desimal) */
+        /* (CSS tetap sama seperti sebelumnya) */
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             margin: 20px; 
@@ -44,7 +44,6 @@
             color: white; 
             font-weight: 600; 
         }
-        /* Input Kuantitas diubah menjadi type="text" agar bisa diisi desimal, lalu diproses sebagai number */
         input[type="number"], .qty-input { 
             width: 60px; 
             padding: 8px; 
@@ -55,7 +54,7 @@
         .qty-input {
             width: 70px;
             font-weight: bold;
-            color: #007bff; /* Menandakan ini adalah input penting */
+            color: #007bff; 
         }
         .total-section { 
             padding: 15px; 
@@ -172,6 +171,52 @@
             width: 50px; 
             text-align: right;
         }
+        
+        /* Gaya baru untuk bagian Dana Keluar */
+        .expense-section {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 5px;
+        }
+        .expense-section h3 {
+            color: #155724;
+            margin-top: 0;
+            border-bottom: 1px dashed #155724;
+            padding-bottom: 5px;
+        }
+        .expense-input-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            align-items: center;
+        }
+        .expense-input-group input[type="text"] {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #155724;
+            border-radius: 4px;
+        }
+        .expense-input-group input[type="number"] {
+            width: 120px;
+            text-align: right;
+            padding: 10px;
+            border: 1px solid #155724;
+            border-radius: 4px;
+        }
+        .expense-list {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #155724;
+        }
+        .expense-list div {
+            padding: 3px 0;
+            border-bottom: 1px dotted #155724;
+            display: flex;
+            justify-content: space-between;
+        }
+
     </style>
 </head>
 <body>
@@ -236,25 +281,49 @@
                 <span id="kembalian" class="value">Rp 0</span>
             </div>
         </div>
-
+        
+        <div class="expense-section">
+            <h3>📝 Catat Dana Keluar (Pengeluaran Operasional)</h3>
+            <div class="expense-input-group">
+                <input type="text" id="expense_desc" placeholder="Keterangan Pengeluaran (e.g. Beli Es Batu, Isi Gas)" />
+                <input type="number" id="expense_amount" min="0" value="" placeholder="Jumlah (Rp)" />
+                <button onclick="recordExpense()" style="background-color: #007bff; margin-top: 0;">Catat Keluar</button>
+            </div>
+            <div class="expense-list">
+                <p><strong>Pengeluaran Hari Ini:</strong></p>
+                <div id="current_expenses">Tidak ada pengeluaran dicatat.</div>
+                <div style="border-top: 2px solid #155724; margin-top: 5px;">
+                    <span>TOTAL DANA KELUAR:</span>
+                    <span id="total_expense_display" style="font-weight: bold;">Rp 0</span>
+                </div>
+            </div>
+        </div>
         <div class="stock-info">
             <h3>Laporan Penjualan & Stok Sisa</h3>
             <div id="report-info"></div>
         </div>
 
         <div class="revenue-report">
-            <h3>Rekapitulasi Pendapatan Harian (Persisten)</h3>
+            <h3>Rekapitulasi Keuangan Harian (Persisten)</h3>
             <div class="rev-row">
+                <span>Total Penjualan Kotor (Gross Revenue):</span>
+                <span id="rekap_gross_total">Rp 0</span>
+            </div>
+            <div class="rev-row" style="color: green;">
                 <span>Total Penjualan Tunai:</span>
                 <span id="rekap_cash">Rp 0</span>
             </div>
-            <div class="rev-row">
+            <div class="rev-row" style="color: green;">
                 <span>Total Penjualan Non-Tunai (QRIS):</span>
                 <span id="rekap_qris">Rp 0</span>
             </div>
-            <div class="rev-row">
-                <span>TOTAL AKUMULASI PENDAPATAN:</span>
-                <span id="rekap_grand_total">Rp 0</span>
+            <div class="rev-row" style="color: red;">
+                <span>Total Dana Keluar (Pengeluaran):</span>
+                <span id="rekap_expense">Rp 0</span>
+            </div>
+            <div class="rev-row" style="color: #dc3545; font-size: 1.3em;">
+                <span>TOTAL PENDAPATAN BERSIH (NET):</span>
+                <span id="rekap_net_total">Rp 0</span>
             </div>
             <button id="end-day-button" onclick="endDayAndClearData()">Akhiri Hari & Reset Data (Z-Report)</button>
         </div>
@@ -262,7 +331,7 @@
 
     <script>
         /* ====================
-           JAVASCRIPT: LOGIKA PERMANEN STOK DAN Z-REPORT LENGKAP
+           JAVASCRIPT: LOGIKA DANA KELUAR & PERSISTENSI
            ==================== */
 
         // ===================================
@@ -270,15 +339,19 @@
         // ===================================
         let totalRevenueCash = parseFloat(localStorage.getItem('revenue_cash')) || 0;
         let totalRevenueQris = parseFloat(localStorage.getItem('revenue_qris')) || 0;
+        
+        // --- VARIABEL BARU UNTUK PENGELUARAN ---
+        let totalExpense = parseFloat(localStorage.getItem('expense_total')) || 0;
+        // Menyimpan list pengeluaran agar bisa ditampilkan detailnya
+        let expenseList = JSON.parse(localStorage.getItem('expense_list')) || []; 
+        // ----------------------------------------
+
         let currentOrderQuantities = {};
         
-        // Data Produk Awal (Template) - MENU BARU DENGAN HARGA HALF
         const initialProductsData = [
-            // Harga Porsi: Rp 25.000, Harga Half: Rp 17.000
             { id: 1, name: "Campur", price: 25000, priceHalf: 17000, stokAwal: 0, terjual: 0 },
             { id: 2, name: "Kulit", price: 25000, priceHalf: 17000, stokAwal: 0, terjual: 0 },
             { id: 3, name: "Daging", price: 25000, priceHalf: 17000, stokAwal: 0, terjual: 0 },
-            // Harga Porsi: Rp 4.000, Harga Half: Rp 3.000
             { id: 4, name: "Lontong", price: 4000, priceHalf: 3000, stokAwal: 0, terjual: 0 }
         ];
 
@@ -308,49 +381,72 @@
         function saveRevenueData() {
             localStorage.setItem('revenue_cash', totalRevenueCash);
             localStorage.setItem('revenue_qris', totalRevenueQris);
+            
+            // --- SIMPAN DATA PENGELUARAN ---
+            localStorage.setItem('expense_total', totalExpense);
+            localStorage.setItem('expense_list', JSON.stringify(expenseList));
+            // -------------------------------
         }
         
-        // --- FUNGSI UNTUK INPUT STOK HARIAN (UNIT PORSI) ---
+        // ===================================
+        // FUNGSI BARU: MENCATAT PENGELUARAN
+        // ===================================
+        function recordExpense() {
+            const descInput = document.getElementById('expense_desc');
+            const amountInput = document.getElementById('expense_amount');
+            
+            const description = descInput.value.trim();
+            const amount = parseFloat(amountInput.value) || 0;
 
-        function loadDailyStockInputs() {
-            const container = document.getElementById('daily-stock-container');
-            container.innerHTML = '';
-            
-            products.forEach(product => {
-                const div = document.createElement('div');
-                div.innerHTML = `
-                    <label for="input-stok-${product.id}">${product.name}:</label>
-                    <input type="number" id="input-stok-${product.id}" min="0" value="${product.stokAwal}">
-                `;
-                container.appendChild(div);
-            });
-        }
-        
-        function updateStokHarian() {
-            let totalStokSet = 0;
-            
-            products.forEach(product => {
-                const inputElement = document.getElementById(`input-stok-${product.id}`);
-                const stokBaru = parseFloat(inputElement.value) || 0; // Menggunakan parseFloat untuk stok desimal
-                
-                if (stokBaru !== product.stokAwal) {
-                    product.terjual = 0; 
-                }
-                
-                product.stokAwal = stokBaru;
-                totalStokSet += stokBaru;
-            });
-            
-            saveProductsToStorage();
-            
-            if (totalStokSet >= 0) {
-                loadProductsTable(); 
-                alert("Stok harian berhasil diperbarui. Siap berjualan!");
-            } else {
-                alert("Masukkan jumlah stok harian Anda!");
+            if (description === "" || amount <= 0) {
+                alert("Harap isi keterangan dan jumlah pengeluaran dengan benar.");
+                return;
             }
+
+            // Tambahkan ke totalExpense
+            totalExpense += amount;
+            
+            // Tambahkan ke list (untuk detail laporan)
+            expenseList.push({
+                desc: description,
+                amount: amount,
+                time: new Date().toLocaleTimeString('id-ID')
+            });
+
+            // Simpan data dan update tampilan
+            saveRevenueData();
+            updateRevenueReport();
+            updateExpenseDisplay();
+            
+            alert(`Pengeluaran dicatat: ${description} sebesar ${formatRupiah(amount)}`);
+
+            // Reset input
+            descInput.value = '';
+            amountInput.value = '';
         }
-        
+
+        // FUNGSI BARU: MENAMPILKAN LIST PENGELUARAN
+        function updateExpenseDisplay() {
+            const listDiv = document.getElementById('current_expenses');
+            const totalDisplay = document.getElementById('total_expense_display');
+            
+            if (expenseList.length === 0) {
+                listDiv.innerHTML = "Tidak ada pengeluaran dicatat.";
+            } else {
+                listDiv.innerHTML = '';
+                expenseList.forEach((exp) => {
+                    const div = document.createElement('div');
+                    div.innerHTML = `<span>[${exp.time}] ${exp.desc}:</span><span>${formatRupiah(exp.amount)}</span>`;
+                    listDiv.appendChild(div);
+                });
+            }
+            totalDisplay.textContent = formatRupiah(totalExpense);
+        }
+
+        // ===================================
+        // FUNGSI LAMA (DIPERBARUI)
+        // ===================================
+
         // 2. Fungsi untuk menampilkan produk ke tabel
         function loadProductsTable() {
             const tableBody = document.getElementById('items-list');
@@ -362,18 +458,16 @@
                 
                 row.insertCell().textContent = product.name;
                 row.insertCell().textContent = formatRupiah(product.price);
-                row.insertCell().textContent = formatRupiah(product.priceHalf); // Kolom harga half
+                row.insertCell().textContent = formatRupiah(product.priceHalf); 
 
                 const stokSisa = product.stokAwal - product.terjual;
                 if (stokSisa > 0) hasStok = true; 
                 
                 const stokCell = row.insertCell();
                 stokCell.id = `stok-sisa-${product.id}`;
-                // Tampilkan stok sisa dengan 1 desimal
                 stokCell.textContent = stokSisa.toFixed(1); 
                 stokCell.style.fontWeight = 'bold'; 
 
-                // Input Kuantitas diubah type="text" agar bisa desimal
                 const quantityCell = row.insertCell();
                 const quantityInput = document.createElement('input');
                 quantityInput.type = 'text'; 
@@ -399,9 +493,10 @@
             
             updateReport();
             updateRevenueReport();
+            updateExpenseDisplay(); // Panggil fungsi baru
         }
-
-        // 3. Fungsi updateSubtotal (LOGIKA PERHITUNGAN PORSI DAN HARGA BARU)
+        
+        // (Fungsi updateSubtotal dan calculatePrice tetap sama untuk logika harga half porsi)
         function updateSubtotal() {
             let grandTotal = 0;
 
@@ -409,23 +504,19 @@
                 const quantityInput = document.getElementById(`qty-${product.id}`);
                 const subtotalDisplay = document.getElementById(`sub-${product.id}`);
                 
-                // Mengganti koma dengan titik dan memastikan input adalah float
                 let rawQuantity = quantityInput.value.replace(',', '.');
                 const quantity = parseFloat(rawQuantity) || 0; 
                 
                 const stokTersedia = product.stokAwal - product.terjual;
 
-                // Batasan Stok
                 if (quantity > stokTersedia) {
                     alert(`Stok ${product.name} yang tersisa hanya ${stokTersedia.toFixed(1)} unit! Jumlah pembelian direset.`);
                     
-                    // Batasi pembelian ke stok tersedia dan bulatkan ke 0.5 terdekat
                     const newQuantity = Math.floor(stokTersedia * 2) / 2; 
                     quantityInput.value = newQuantity.toFixed(1); 
                     
                     currentOrderQuantities[product.id] = newQuantity;
 
-                    // Hitung Subtotal dengan LOGIKA HALF PORSI
                     const subtotal = calculatePrice(product, newQuantity);
                     subtotalDisplay.textContent = formatRupiah(subtotal);
                     grandTotal += subtotal;
@@ -433,7 +524,6 @@
                 } else {
                     currentOrderQuantities[product.id] = quantity;
                     
-                    // Hitung Subtotal dengan LOGIKA HALF PORSI
                     const subtotal = calculatePrice(product, quantity);
                     subtotalDisplay.textContent = formatRupiah(subtotal);
                     grandTotal += subtotal;
@@ -444,12 +534,11 @@
             updateChange(); 
         }
 
-        // FUNGSI BARU: LOGIKA HARGA SETENGAH PORSI
         function calculatePrice(product, quantity) {
             if (quantity <= 0) return 0;
 
-            const fullPorsi = Math.floor(quantity); // Bagian porsi penuh (misal 2 dari 2.5)
-            const halfPorsi = quantity % 1 === 0.5 ? 1 : 0; // Cek apakah ada setengah porsi (misal 0.5 dari 2.5)
+            const fullPorsi = Math.floor(quantity); 
+            const halfPorsi = quantity % 1 === 0.5 ? 1 : 0; 
 
             let total = (fullPorsi * product.price);
 
@@ -459,10 +548,7 @@
             return total;
         }
 
-
-        // 4. Fungsi updateChange (Realtime Split Payment) - Tetap sama
         function updateChange() {
-            // ... (Kode updateChange sama) ...
             const totalDisplay = document.getElementById('total-belanja').textContent;
             const totalBelanja = parseFloat(totalDisplay.replace(/[^0-9]/g, '')) || 0; 
             
@@ -491,7 +577,6 @@
             }
         }
 
-        // 5. Fungsi Finalisasi Transaksi (Update Stok & Pendapatan)
         function hitungTotal() {
             const totalDisplay = document.getElementById('total-belanja').textContent;
             const totalBelanja = parseFloat(totalDisplay.replace(/[^0-9]/g, '')) || 0; 
@@ -519,16 +604,13 @@
                     }
                 }
 
-                // AKUMULASI PENDAPATAN & SIMPAN KE LOCALSTORAGE
                 totalRevenueCash += revenueCash;
                 totalRevenueQris += revenueQris;
                 saveRevenueData();
                 
-                // Update Stok Terjual dan SIMPAN DATA PRODUK
                 products.forEach(product => {
                     const quantity = currentOrderQuantities[product.id] || 0;
                     if (quantity > 0) {
-                        // Kuantitas yang terjual sekarang berupa desimal
                         product.terjual += quantity; 
                     }
                 });
@@ -536,54 +618,75 @@
                 
                 alert(`Transaksi Selesai! Pendapatan dicatat: Tunai ${formatRupiah(revenueCash)} + QRIS ${formatRupiah(revenueQris)}.`);
 
-                // Reset Tampilan POS dan Laporan
                 resetPOS();
                 updateReport(); 
                 updateRevenueReport(); 
             }
         }
 
-        // 6. Fungsi updateRevenueReport (Laporan Pendapatan Persisten) - Tetap sama
+        // 6. Fungsi updateRevenueReport (Laporan Pendapatan DENGAN PENGELUARAN)
         function updateRevenueReport() {
-            const totalGrand = totalRevenueCash + totalRevenueQris;
+            const totalGross = totalRevenueCash + totalRevenueQris;
+            const totalNet = totalGross - totalExpense; // Perhitungan Pendapatan Bersih
             
+            document.getElementById('rekap_gross_total').textContent = formatRupiah(totalGross);
             document.getElementById('rekap_cash').textContent = formatRupiah(totalRevenueCash);
             document.getElementById('rekap_qris').textContent = formatRupiah(totalRevenueQris);
-            document.getElementById('rekap_grand_total').textContent = formatRupiah(totalGrand);
+            document.getElementById('rekap_expense').textContent = formatRupiah(totalExpense);
+            document.getElementById('rekap_net_total').textContent = formatRupiah(totalNet);
+
+            // Highlight Net Revenue jika minus
+            document.getElementById('rekap_net_total').style.color = totalNet < 0 ? 'red' : '#dc3545';
         }
         
-        // 7. Fungsi endDayAndClearData (Z-Report Lengkap) - PERUBAHAN TAMPILAN DESIMAL
+        // 7. Fungsi endDayAndClearData (Z-Report LENGKAP)
         function endDayAndClearData() {
-            const confirmation = confirm("Apakah Anda yakin ingin MENGAKHIRI HARI KERJA? Laporan Z-Report akan dibuat, dan semua data (Stok & Pendapatan) hari ini akan direset.");
+            const totalGross = totalRevenueCash + totalRevenueQris;
+            const totalNet = totalGross - totalExpense; 
+
+            const confirmation = confirm("Apakah Anda yakin ingin MENGAKHIRI HARI KERJA? Laporan Z-Report akan dibuat, dan semua data (Stok, Pendapatan, & Pengeluaran) hari ini akan direset.");
             
             if (confirmation) {
                 // --- 1. KOMPILASI LAPORAN STOK AKHIR ---
                 let stockReport = "LAPORAN SISA STOK HARI INI:\n";
                 products.forEach(p => {
-                    const sisa = (p.stokAwal - p.terjual).toFixed(1); // Tampilkan sisa dengan 1 desimal
+                    const sisa = (p.stokAwal - p.terjual).toFixed(1); 
                     stockReport += `- ${p.name}: Stok Awal ${p.stokAwal.toFixed(1)}, Terjual ${p.terjual.toFixed(1)}, Sisa ${sisa}\n`;
                 });
                 
-                // --- 2. KOMPILASI LAPORAN PENDAPATAN ---
-                const totalGrand = totalRevenueCash + totalRevenueQris;
-                let revenueReport = `\nLAPORAN PENDAPATAN:\n`;
-                revenueReport += `- Tunai: ${formatRupiah(totalRevenueCash)}\n`;
-                revenueReport += `- Non-Tunai: ${formatRupiah(totalRevenueQris)}\n`;
-                revenueReport += `TOTAL PENJUALAN: ${formatRupiah(totalGrand)}`;
+                // --- 2. KOMPILASI LAPORAN PENGELUARAN (DETAIL) ---
+                let expenseDetail = "\nRINCIAN DANA KELUAR:\n";
+                if (expenseList.length > 0) {
+                    expenseList.forEach(exp => {
+                        expenseDetail += `[${exp.time}] ${exp.desc}: ${formatRupiah(exp.amount)}\n`;
+                    });
+                } else {
+                    expenseDetail += "Tidak ada dana keluar dicatat.\n";
+                }
+                
+                // --- 3. KOMPILASI LAPORAN PENDAPATAN ---
+                let revenueReport = `\nLAPORAN PENDAPATAN HARIAN:\n`;
+                revenueReport += `- Penjualan Kotor (Gross): ${formatRupiah(totalGross)}\n`;
+                revenueReport += `- Dana Keluar (Total Expense): ${formatRupiah(totalExpense)}\n`;
+                revenueReport += `TOTAL PENDAPATAN BERSIH (NET): ${formatRupiah(totalNet)}`;
                 
                 // Tampilkan laporan akhir yang lengkap
-                alert(`----- Z-REPORT LENGKAP -----\n\n${stockReport}\n${revenueReport}\n\n------------------------------\nData hari ini akan direset.`);
+                alert(`----- Z-REPORT LENGKAP -----\n\n${stockReport}\n${expenseDetail}\n${revenueReport}\n\n------------------------------\nData hari ini akan direset.`);
                 
-                // --- 3. RESET DATA ---
+                // --- 4. RESET DATA ---
                 
                 products = JSON.parse(JSON.stringify(initialProductsData));
                 localStorage.removeItem('products_data');
 
                 localStorage.removeItem('revenue_cash');
                 localStorage.removeItem('revenue_qris');
+                localStorage.removeItem('expense_total'); // Hapus total pengeluaran
+                localStorage.removeItem('expense_list');  // Hapus detail pengeluaran
                 
                 totalRevenueCash = 0;
                 totalRevenueQris = 0;
+                totalExpense = 0;
+                expenseList = [];
                 
                 // Reset tampilan
                 updateRevenueReport(); 
@@ -593,7 +696,8 @@
             }
         }
 
-        // 8. Fungsi mereset input dan tampilan (PERUBAHAN TAMPILAN DESIMAL)
+        // (Fungsi lain seperti resetPOS, updateReport, loadDailyStockInputs, updateStokHarian tetap sama)
+
         function resetPOS() {
             document.getElementById('uang_cash').value = 0;
             document.getElementById('uang_qris').value = 0;
@@ -609,7 +713,6 @@
             updateSubtotal();
         }
 
-        // 9. Fungsi menampilkan laporan stok (PERUBAHAN TAMPILAN DESIMAL)
         function updateReport() {
             const reportDiv = document.getElementById('report-info');
             reportDiv.innerHTML = '';
@@ -624,12 +727,53 @@
                 reportDiv.appendChild(p);
             });
         }
+        
+        function loadDailyStockInputs() {
+            const container = document.getElementById('daily-stock-container');
+            container.innerHTML = '';
+            
+            products.forEach(product => {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <label for="input-stok-${product.id}">${product.name}:</label>
+                    <input type="number" id="input-stok-${product.id}" min="0" value="${product.stokAwal}">
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        function updateStokHarian() {
+            let totalStokSet = 0;
+            
+            products.forEach(product => {
+                const inputElement = document.getElementById(`input-stok-${product.id}`);
+                const stokBaru = parseFloat(inputElement.value) || 0;
+
+                if (stokBaru !== product.stokAwal) {
+                    product.terjual = 0; 
+                }
+                
+                product.stokAwal = stokBaru;
+                totalStokSet += stokBaru;
+            });
+            
+            saveProductsToStorage();
+            
+            if (totalStokSet >= 0) {
+                loadProductsTable(); 
+                alert("Stok harian berhasil diperbarui. Siap berjualan!");
+            } else {
+                alert("Masukkan jumlah stok harian Anda!");
+            }
+        }
+
 
         // Jalankan fungsi saat halaman selesai dimuat
         window.onload = function() {
             loadDailyStockInputs(); 
             loadProductsTable(); 
             updateSubtotal();
+            updateExpenseDisplay(); // Pastikan pengeluaran ditampilkan saat loading
         };
     </script>
 
