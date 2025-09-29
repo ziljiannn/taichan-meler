@@ -6,9 +6,7 @@
     <title>POS Taichan Setengah Porsi - Alur Antrian & Bayar (Final Fix)</title>
     
     <style>
-        /* ====================
-           CSS STYLES
-           ==================== */
+        /* CSS STYLES */
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             margin: 20px; 
@@ -67,9 +65,6 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-        .total-section .total-row {
-            padding: 0;
         }
         .label { 
             font-weight: bold; 
@@ -146,7 +141,7 @@
              display: flex; 
              gap: 15px; 
              flex-wrap: wrap;
-             justify-content: space-between; /* Menata item stok secara horizontal */
+             justify-content: space-between; 
         }
         .daily-stock-item {
             display: flex;
@@ -360,9 +355,7 @@
     </div>
 
     <script>
-        /* ====================
-           JAVASCRIPT: LOGIKA POS LENGKAP (ALUR BARU)
-           ==================== */
+        /* JAVASCRIPT: LOGIKA POS LENGKAP */
 
         // ===================================
         // VARIABEL GLOBAL & PERSISTENSI
@@ -427,7 +420,7 @@
             
             products.forEach(product => {
                 const div = document.createElement('div');
-                div.className = 'daily-stock-item'; // Tambahkan kelas untuk tata letak
+                div.className = 'daily-stock-item'; 
                 
                 div.innerHTML = `
                     <label for="input-stok-${product.id}">${product.name}:</label>
@@ -595,7 +588,7 @@
                          return;
                     }
                     
-                    product.terjual += quantity; // Stok langsung dikurangi saat masuk antrian
+                    product.terjual += quantity; 
                     itemsOrdered.push({ name: product.name, quantity: quantity, id: product.id });
                     stockDeducted = true;
                 }
@@ -818,4 +811,76 @@
                 }
             }
 
-            const confirmation = confirm("Apakah Anda yakin ingin MENGAKHIRI HARI KERJA? Laporan Z-Report akan dibuat, dan semua
+            const confirmation = confirm("Apakah Anda yakin ingin MENGAKHIRI HARI KERJA? Laporan Z-Report akan dibuat, dan semua data (Stok, Pendapatan, Pengeluaran & Antrian) akan direset.");
+            
+            if (confirmation) {
+                // --- KOMPILASI LAPORAN ---
+                let stockReport = "LAPORAN SISA STOK HARI INI:\n";
+                products.forEach(p => {
+                    const sisa = (p.stokAwal - p.terjual).toFixed(1); 
+                    stockReport += `- ${p.name}: Stok Awal ${p.stokAwal.toFixed(1)}, Terjual ${p.terjual.toFixed(1)}, Sisa ${sisa}\n`;
+                });
+                
+                const totalGross = totalRevenueCash + totalRevenueQris;
+                const totalNet = totalGross - totalExpenses;
+                let revenueReport = `\nLAPORAN PENDAPATAN:\n`;
+                revenueReport += `- Penjualan Tunai: ${formatRupiah(totalRevenueCash)}\n`;
+                revenueReport += `- Penjualan Non-Tunai (QRIS): ${formatRupiah(totalRevenueQris)}\n`;
+                revenueReport += `TOTAL PENDAPATAN KOTOR: ${formatRupiah(totalGross)}\n`;
+                
+                let expenseReport = `\nLAPORAN PENGELUARAN (${formatRupiah(totalExpenses)}):\n`;
+                if (expensesList.length > 0) {
+                    expenseReport += "-- Daftar Pengeluaran Harian --\n";
+                    expensesList.forEach(e => {
+                        expenseReport += `-- [${e.timestamp}] ${e.description}: ${formatRupiah(e.amount)}\n`;
+                    });
+                } else {
+                    expenseReport += "-- Tidak ada pengeluaran dicatat.\n";
+                }
+                
+                let finalReport = `\nTOTAL PENDAPATAN BERSIH: ${formatRupiah(totalNet)}`;
+
+                alert(`----- Z-REPORT LENGKAP -----\n\n${stockReport}\n${revenueReport}\n${expenseReport}\n${finalReport}\n\n------------------------------\nData hari ini akan direset.`);
+                
+                // --- RESET DATA ---
+                
+                products = JSON.parse(JSON.stringify(initialProductsData));
+                localStorage.clear(); 
+                
+                totalRevenueCash = 0;
+                totalRevenueQris = 0;
+                totalExpenses = 0;
+                expensesList = [];
+                orderQueue = [];
+                orderCounter = 1;
+                
+                // Reset tampilan
+                updateRevenueReport(); 
+                loadDailyStockInputs();
+                loadProductsTable(); 
+                renderExpensesList();
+                renderOrderQueue(); 
+                alert("Sistem telah direset. Siap untuk hari baru!");
+            }
+        }
+
+        // --- INISIALISASI ---
+        window.onclick = function(event) {
+            const modal = document.getElementById('paymentModal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        window.onload = function() {
+            // Memastikan input stok harian dimuat saat halaman pertama kali dibuka
+            loadDailyStockInputs(); 
+            // Kemudian baru memuat tabel produk dan laporan lainnya
+            loadProductsTable(); 
+            updateSubtotal();
+            renderExpensesList(); 
+        };
+    </script>
+
+</body>
+</html>
