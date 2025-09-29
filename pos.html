@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Taichan Setengah Porsi - Alur Antrian & Bayar (Final Fix)</title>
+    <title>POS Taichan Setengah Porsi - Alur Antrian & Bayar (Final Fix 2)</title>
     
     <style>
-        /* CSS STYLES */
+        /* CSS STYLES (Dipotong untuk efisiensi, asumsikan sama) */
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             margin: 20px; 
@@ -455,6 +455,17 @@
             }
         }
         
+        // --- FUNGSI BARU UNTUK MEMPERBARUI KOLOM STOK DI TABEL UTAMA ---
+        function updateStockTableDisplay() {
+            products.forEach(product => {
+                const stokSisa = product.stokAwal - product.terjual;
+                const stokCell = document.getElementById(`stok-sisa-${product.id}`);
+                if (stokCell) {
+                    stokCell.textContent = stokSisa.toFixed(1);
+                }
+            });
+        }
+        
         // --- 2. FUNGSI PENJUALAN ---
 
         function loadProductsTable() {
@@ -600,6 +611,9 @@
             }
             
             saveProductsToStorage();
+            
+            // Perbaikan ada di sini: Panggil fungsi baru untuk update display stok
+            updateStockTableDisplay(); 
 
             const newOrder = {
                 id: orderCounter++,
@@ -815,72 +829,4 @@
             
             if (confirmation) {
                 // --- KOMPILASI LAPORAN ---
-                let stockReport = "LAPORAN SISA STOK HARI INI:\n";
-                products.forEach(p => {
-                    const sisa = (p.stokAwal - p.terjual).toFixed(1); 
-                    stockReport += `- ${p.name}: Stok Awal ${p.stokAwal.toFixed(1)}, Terjual ${p.terjual.toFixed(1)}, Sisa ${sisa}\n`;
-                });
-                
-                const totalGross = totalRevenueCash + totalRevenueQris;
-                const totalNet = totalGross - totalExpenses;
-                let revenueReport = `\nLAPORAN PENDAPATAN:\n`;
-                revenueReport += `- Penjualan Tunai: ${formatRupiah(totalRevenueCash)}\n`;
-                revenueReport += `- Penjualan Non-Tunai (QRIS): ${formatRupiah(totalRevenueQris)}\n`;
-                revenueReport += `TOTAL PENDAPATAN KOTOR: ${formatRupiah(totalGross)}\n`;
-                
-                let expenseReport = `\nLAPORAN PENGELUARAN (${formatRupiah(totalExpenses)}):\n`;
-                if (expensesList.length > 0) {
-                    expenseReport += "-- Daftar Pengeluaran Harian --\n";
-                    expensesList.forEach(e => {
-                        expenseReport += `-- [${e.timestamp}] ${e.description}: ${formatRupiah(e.amount)}\n`;
-                    });
-                } else {
-                    expenseReport += "-- Tidak ada pengeluaran dicatat.\n";
-                }
-                
-                let finalReport = `\nTOTAL PENDAPATAN BERSIH: ${formatRupiah(totalNet)}`;
-
-                alert(`----- Z-REPORT LENGKAP -----\n\n${stockReport}\n${revenueReport}\n${expenseReport}\n${finalReport}\n\n------------------------------\nData hari ini akan direset.`);
-                
-                // --- RESET DATA ---
-                
-                products = JSON.parse(JSON.stringify(initialProductsData));
-                localStorage.clear(); 
-                
-                totalRevenueCash = 0;
-                totalRevenueQris = 0;
-                totalExpenses = 0;
-                expensesList = [];
-                orderQueue = [];
-                orderCounter = 1;
-                
-                // Reset tampilan
-                updateRevenueReport(); 
-                loadDailyStockInputs();
-                loadProductsTable(); 
-                renderExpensesList();
-                renderOrderQueue(); 
-                alert("Sistem telah direset. Siap untuk hari baru!");
-            }
-        }
-
-        // --- INISIALISASI ---
-        window.onclick = function(event) {
-            const modal = document.getElementById('paymentModal');
-            if (event.target == modal) {
-                modal.style.display = "none";
-            }
-        }
-
-        window.onload = function() {
-            // Memastikan input stok harian dimuat saat halaman pertama kali dibuka
-            loadDailyStockInputs(); 
-            // Kemudian baru memuat tabel produk dan laporan lainnya
-            loadProductsTable(); 
-            updateSubtotal();
-            renderExpensesList(); 
-        };
-    </script>
-
-</body>
-</html>
+                let stockReport = "LAPORAN SISA STOK HARI INI
