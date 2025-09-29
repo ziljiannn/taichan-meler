@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Taichan Setengah Porsi (Plus Antrian)</title>
+    <title>POS Taichan Setengah Porsi (Plus Antrian) - FIX STOK</title>
     
     <style>
-        /* (CSS tetap sama, hanya menambahkan style untuk antrian) */
+        /* ====================
+           CSS STYLES
+           ==================== */
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             margin: 20px; 
@@ -161,6 +163,12 @@
             border: 1px solid #ced4da;
             border-radius: 5px;
             background-color: #f8f9fa;
+            flex-direction: column; /* Ubah ke kolom agar input stok rapi */
+        }
+        .daily-stock-input-row {
+             display: flex; 
+             gap: 15px; 
+             flex-wrap: wrap;
         }
         .daily-stock-input label {
             font-weight: bold;
@@ -231,13 +239,13 @@
             color: #dc3545;
         }
 
-        /* NEW: Queue Section Styles */
+        /* Queue Section Styles */
         .queue-section {
             margin-top: 25px;
             padding: 15px;
-            border: 2px solid #007bff; /* Blue border for visibility */
+            border: 2px solid #007bff; 
             border-radius: 8px;
-            background-color: #e6f7ff; /* Light background */
+            background-color: #e6f7ff; 
         }
         .queue-section h3 {
             color: #007bff;
@@ -267,7 +275,7 @@
             color: #6c757d;
         }
         .queue-actions button {
-            background-color: #ffc107; /* Yellow/Orange for "Ready" */
+            background-color: #ffc107; 
             color: black;
             padding: 8px 15px;
             margin-top: 0;
@@ -289,7 +297,7 @@
 
         <div class="daily-stock-input">
             <span style="font-weight: bold; width: 100%; color: #dc3545;">Input Stok Harian (Unit Porsi):</span>
-            <div id="daily-stock-container" style="display: flex; flex-wrap: wrap; gap: 15px;"></div>
+            <div id="daily-stock-container" class="daily-stock-input-row"></div>
             <button onclick="updateStokHarian()" style="background-color: #007bff; margin-top: 0;">Update Stok & Mulai Jual</button>
         </div>
         
@@ -406,18 +414,15 @@
         let totalRevenueQris = parseFloat(localStorage.getItem('revenue_qris')) || 0;
         let totalExpenses = parseFloat(localStorage.getItem('total_expenses')) || 0;
         let expensesList = JSON.parse(localStorage.getItem('expenses_list')) || [];
-        // NEW: Antrian Pesanan
         let orderQueue = JSON.parse(localStorage.getItem('order_queue')) || [];
         let currentOrderQuantities = {};
-        let orderCounter = parseInt(localStorage.getItem('order_counter')) || 1; // Untuk penomoran antrian
+        let orderCounter = parseInt(localStorage.getItem('order_counter')) || 1; 
         
         // Data Produk Awal (Template) - MENU BARU DENGAN HARGA HALF
         const initialProductsData = [
-            // Harga Porsi: Rp 25.000, Harga Half: Rp 17.000
             { id: 1, name: "Campur", price: 25000, priceHalf: 17000, stokAwal: 0, terjual: 0 },
             { id: 2, name: "Kulit", price: 25000, priceHalf: 17000, stokAwal: 0, terjual: 0 },
             { id: 3, name: "Daging", price: 25000, priceHalf: 17000, stokAwal: 0, terjual: 0 },
-            // Harga Porsi: Rp 4.000, Harga Half: Rp 3.000
             { id: 4, name: "Lontong", price: 4000, priceHalf: 3000, stokAwal: 0, terjual: 0 }
         ];
 
@@ -450,13 +455,28 @@
             localStorage.setItem('revenue_qris', totalRevenueQris);
             localStorage.setItem('total_expenses', totalExpenses);
             localStorage.setItem('expenses_list', JSON.stringify(expensesList));
-            // NEW: Simpan Antrian dan Counter
             localStorage.setItem('order_queue', JSON.stringify(orderQueue));
             localStorage.setItem('order_counter', orderCounter);
         }
         
-        // --- FUNGSI UTAMA ---
+        // --- FUNGSI UTAMA STOK HARIAN (SUDAH DIPERIKSA) ---
 
+        function loadDailyStockInputs() {
+            const container = document.getElementById('daily-stock-container');
+            container.innerHTML = '';
+            
+            products.forEach(product => {
+                const div = document.createElement('div');
+                div.style.display = 'flex';
+                div.style.alignItems = 'center';
+                div.innerHTML = `
+                    <label for="input-stok-${product.id}">${product.name}:</label>
+                    <input type="number" id="input-stok-${product.id}" min="0" value="${product.stokAwal}">
+                `;
+                container.appendChild(div);
+            });
+        }
+        
         function updateStokHarian() {
             let totalStokSet = 0;
             
@@ -482,6 +502,8 @@
             }
         }
         
+        // --- FUNGSI LAINNYA (DARI KODE SEBELUMNYA) ---
+
         function loadProductsTable() {
             const tableBody = document.getElementById('items-list');
             tableBody.innerHTML = ''; 
@@ -528,7 +550,7 @@
             updateReport();
             updateRevenueReport();
             renderExpensesList(); 
-            renderOrderQueue(); // NEW: Render antrian saat load
+            renderOrderQueue(); 
         }
 
         function updateSubtotal() {
@@ -613,7 +635,6 @@
             }
         }
 
-        // FUNGSI UTAMA: Finalisasi Transaksi
         function hitungTotal() {
             const totalDisplay = document.getElementById('total-belanja').textContent;
             const totalBelanja = parseFloat(totalDisplay.replace(/[^0-9]/g, '')) || 0; 
@@ -673,11 +694,9 @@
                 resetPOS();
                 updateReport(); 
                 updateRevenueReport(); 
-                renderOrderQueue(); // Perbarui tampilan antrian
+                renderOrderQueue(); 
             }
         }
-
-        // --- NEW: FUNGSI ANTRIAN (QUEUE) ---
 
         function renderOrderQueue() {
             const container = document.getElementById('queue-list-container');
@@ -717,7 +736,6 @@
             const index = orderQueue.findIndex(order => order.id === orderId);
             
             if (index > -1) {
-                // Hapus dari antrian
                 orderQueue.splice(index, 1);
                 saveRevenueData();
                 
@@ -726,8 +744,6 @@
                 renderOrderQueue(); 
             }
         }
-
-        // --- FUNGSI PENGELUARAN (DANA KELUAR) ---
 
         function addExpense() {
             const descriptionInput = document.getElementById('expense-description');
@@ -772,7 +788,6 @@
             document.getElementById('total-expense-display').textContent = formatRupiah(totalExpenses);
         }
         
-        // 6. Fungsi updateRevenueReport (Laporan Pendapatan Persisten)
         function updateRevenueReport() {
             const totalGross = totalRevenueCash + totalRevenueQris;
             const totalNet = totalGross - totalExpenses; 
@@ -783,12 +798,11 @@
             document.getElementById('rekap_grand_total').textContent = formatRupiah(totalNet);
         }
         
-        // 7. Fungsi endDayAndClearData (Z-Report Lengkap) - DIUBAH (Menambahkan cek antrian)
         function endDayAndClearData() {
             if (orderQueue.length > 0) {
                 const queueConfirm = confirm(`PERINGATAN: Masih ada ${orderQueue.length} pesanan di antrian. Mohon selesaikan pesanan tersebut sebelum mengakhiri hari.\nApakah Anda yakin ingin tetap melanjutkan reset (pesanan di antrian akan HILANG)?`);
                 if (!queueConfirm) {
-                    return; // Batalkan reset jika pengguna memilih tidak
+                    return; 
                 }
             }
 
@@ -813,6 +827,7 @@
                 // --- 3. KOMPILASI LAPORAN PENGELUARAN ---
                 let expenseReport = `\nLAPORAN PENGELUARAN (${formatRupiah(totalExpenses)}):\n`;
                 if (expensesList.length > 0) {
+                    expenseReport += "-- Daftar Pengeluaran Harian --\n";
                     expensesList.forEach(e => {
                         expenseReport += `-- [${e.timestamp}] ${e.description}: ${formatRupiah(e.amount)}\n`;
                     });
@@ -824,71 +839,4 @@
                 let finalReport = `\nTOTAL PENDAPATAN BERSIH: ${formatRupiah(totalNet)}`;
 
                 // Tampilkan laporan akhir yang lengkap
-                alert(`----- Z-REPORT LENGKAP -----\n\n${stockReport}\n${revenueReport}\n${expenseReport}\n${finalReport}\n\n------------------------------\nData hari ini akan direset.`);
-                
-                // --- 5. RESET DATA ---
-                
-                products = JSON.parse(JSON.stringify(initialProductsData));
-                localStorage.clear(); // Hapus semua local storage
-                
-                totalRevenueCash = 0;
-                totalRevenueQris = 0;
-                totalExpenses = 0;
-                expensesList = [];
-                orderQueue = [];
-                orderCounter = 1;
-                
-                // Reset tampilan
-                updateRevenueReport(); 
-                loadDailyStockInputs();
-                loadProductsTable(); 
-                renderExpensesList();
-                renderOrderQueue(); // Reset antrian
-                alert("Sistem telah direset. Siap untuk hari baru!");
-            }
-        }
-
-        // 8. Fungsi mereset input dan tampilan
-        function resetPOS() {
-            document.getElementById('uang_cash').value = 0;
-            document.getElementById('uang_qris').value = 0;
-            products.forEach(product => {
-                const qtyInput = document.getElementById(`qty-${product.id}`);
-                if (qtyInput) qtyInput.value = '0';
-                
-                const stokSisaEl = document.getElementById(`stok-sisa-${product.id}`);
-                if (stokSisaEl) stokSisaEl.textContent = (product.stokAwal - product.terjual).toFixed(1);
-                
-                currentOrderQuantities[product.id] = 0;
-            });
-            updateSubtotal();
-        }
-
-        // 9. Fungsi menampilkan laporan stok
-        function updateReport() {
-            const reportDiv = document.getElementById('report-info');
-            reportDiv.innerHTML = '';
-            
-            products.forEach(product => {
-                const stokSisa = product.stokAwal - product.terjual;
-                const p = document.createElement('p');
-                
-                const colorClass = stokSisa <= 5 ? 'red-text' : 'green-text';
-
-                p.innerHTML = `<strong>${product.name}:</strong> Stok Harian: ${product.stokAwal.toFixed(1)}, Terjual: <span class="green-text">${product.terjual.toFixed(1)}</span>, Sisa Stok: <span class="${colorClass}">${stokSisa.toFixed(1)}</span>`;
-                reportDiv.appendChild(p);
-            });
-        }
-
-        // Jalankan fungsi saat halaman selesai dimuat
-        window.onload = function() {
-            loadDailyStockInputs(); 
-            loadProductsTable(); 
-            updateSubtotal();
-            renderExpensesList(); 
-        };
-    </script>
-
-</body>
-</html>
-
+                alert(`----- Z-REPORT LENG
