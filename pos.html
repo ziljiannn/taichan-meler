@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Taichan Setengah Porsi - Alur Antrian & Bayar</title>
+    <title>POS Taichan Setengah Porsi - Alur Antrian & Bayar (Final Fix)</title>
     
     <style>
         /* ====================
@@ -146,11 +146,18 @@
              display: flex; 
              gap: 15px; 
              flex-wrap: wrap;
+             justify-content: space-between; /* Menata item stok secara horizontal */
+        }
+        .daily-stock-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
         .daily-stock-input label {
             font-weight: bold;
             color: #343a40;
             margin-right: 5px;
+            white-space: nowrap;
         }
         .daily-stock-input input {
             width: 50px; 
@@ -250,7 +257,8 @@
 
         <div class="daily-stock-input">
             <span style="font-weight: bold; width: 100%; color: #dc3545;">Input Stok Harian (Unit Porsi):</span>
-            <div id="daily-stock-container" class="daily-stock-input-row"></div>
+            <div id="daily-stock-container" class="daily-stock-input-row">
+                </div>
             <button onclick="updateStokHarian()" style="background-color: #007bff; margin-top: 0;">Update Stok & Mulai Jual</button>
         </div>
         
@@ -266,7 +274,8 @@
                     <th>Subtotal (Rp)</th>
                 </tr>
             </thead>
-            <tbody id="items-list"></tbody>
+            <tbody id="items-list">
+                </tbody>
         </table>
         
         <div class="total-section">
@@ -365,7 +374,7 @@
         let orderQueue = JSON.parse(localStorage.getItem('order_queue')) || [];
         let currentOrderQuantities = {};
         let orderCounter = parseInt(localStorage.getItem('order_counter')) || 1; 
-        let currentProcessingOrder = null; // Menyimpan data pesanan yang sedang diproses di modal
+        let currentProcessingOrder = null; 
         
         const initialProductsData = [
             { id: 1, name: "Campur", price: 25000, priceHalf: 17000, stokAwal: 0, terjual: 0 },
@@ -410,7 +419,7 @@
             localStorage.setItem('order_counter', orderCounter);
         }
         
-        // --- 1. FUNGSI STOK HARIAN ---
+        // --- 1. FUNGSI STOK HARIAN (FIXED) ---
 
         function loadDailyStockInputs() {
             const container = document.getElementById('daily-stock-container');
@@ -418,8 +427,8 @@
             
             products.forEach(product => {
                 const div = document.createElement('div');
-                div.style.display = 'flex';
-                div.style.alignItems = 'center';
+                div.className = 'daily-stock-item'; // Tambahkan kelas untuk tata letak
+                
                 div.innerHTML = `
                     <label for="input-stok-${product.id}">${product.name}:</label>
                     <input type="number" id="input-stok-${product.id}" min="0" step="0.5" value="${product.stokAwal.toFixed(1)}">
@@ -577,14 +586,11 @@
             const itemsOrdered = [];
             let stockDeducted = false;
 
-            // Catat pesanan dan kurangi stok SEMENTARA di sistem
             products.forEach(product => {
                 const quantity = currentOrderQuantities[product.id] || 0;
                 if (quantity > 0) {
-                    // Cek ketersediaan stok sekali lagi
                     const stokTersedia = product.stokAwal - product.terjual;
                     if (quantity > stokTersedia) {
-                         // Ini seharusnya tidak terjadi jika validasi di updateSubtotal benar, tapi sebagai safety
                          alert(`ERROR: Stok ${product.name} tidak cukup (${stokTersedia.toFixed(1)} sisa)!`);
                          return;
                     }
@@ -602,19 +608,17 @@
             
             saveProductsToStorage();
 
-            // Masukkan ke Antrian
             const newOrder = {
                 id: orderCounter++,
                 timestamp: new Date().toLocaleTimeString('id-ID'),
                 total: totalBelanja,
-                items: itemsOrdered, // Menyimpan item dalam format objek untuk pelaporan dan stok
+                items: itemsOrdered, 
             };
             orderQueue.push(newOrder);
             saveRevenueData();
             
             alert(`Pesanan #${newOrder.id} masuk antrian. Total: ${formatRupiah(newOrder.total)}`);
 
-            // Reset Tampilan Keranjang
             resetPOS();
             updateReport(); 
             renderOrderQueue(); 
@@ -632,16 +636,17 @@
             document.getElementById('modal-order-id').textContent = order.id;
             document.getElementById('modal-total-belanja').textContent = formatRupiah(order.total);
             
-            document.getElementById('modal_uang_cash').value = order.total; // Auto-isi dengan total untuk memudahkan
+            document.getElementById('modal_uang_cash').value = order.total; 
             document.getElementById('modal_uang_qris').value = 0;
             
-            // Hitung kembalian awal
             updateModalKembalian(); 
             
             document.getElementById('paymentModal').style.display = 'block';
         }
         
         function updateModalKembalian() {
+            if (!currentProcessingOrder) return;
+
             const totalBelanja = currentProcessingOrder.total;
             const uangCash = parseFloat(document.getElementById('modal_uang_cash').value) || 0;
             const uangQris = parseFloat(document.getElementById('modal_uang_qris').value) || 0;
@@ -672,22 +677,19 @@
             
             const kembalian = totalUangMasuk - totalBelanja;
             
-            // Hitung pendapatan bersih per metode pembayaran
             let revenueQris = Math.min(uangQrisInput, totalBelanja); 
             const sisaPembayaran = totalBelanja - revenueQris;
             let revenueCash = Math.min(uangCashInput, sisaPembayaran);
             
             if (revenueCash + revenueQris !== totalBelanja) {
-                revenueCash = totalBelanja - revenueQris; // Koreksi final jika ada floating point issue
+                revenueCash = totalBelanja - revenueQris; 
             }
             
-            // Catat Pendapatan ke Akumulasi Harian
             totalRevenueCash += revenueCash;
             totalRevenueQris += revenueQris;
             
             saveRevenueData();
             
-            // Hapus dari Antrian
             const index = orderQueue.findIndex(order => order.id === currentProcessingOrder.id);
             if (index > -1) {
                 orderQueue.splice(index, 1);
@@ -696,7 +698,6 @@
             document.getElementById('paymentModal').style.display = 'none';
             alert(`Pembayaran pesanan #${currentProcessingOrder.id} Selesai.\nTunai: ${formatRupiah(revenueCash)}, QRIS: ${formatRupiah(revenueQris)}\nKembalian: ${formatRupiah(kembalian)}`);
 
-            // Update Tampilan
             updateRevenueReport(); 
             renderOrderQueue(); 
             currentProcessingOrder = null;
@@ -725,3 +726,96 @@
                     <strong>Antrian #${order.id} (${formatRupiah(order.total)})</strong>
                     <span>${itemsList}</span>
                 `;
+                
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'queue-actions';
+                const completeButton = document.createElement('button');
+                completeButton.textContent = 'Selesaikan & Bayar';
+                completeButton.onclick = () => openPaymentModal(order.id);
+                actionsDiv.appendChild(completeButton);
+
+                itemDiv.appendChild(detailsDiv);
+                itemDiv.appendChild(actionsDiv);
+                container.appendChild(itemDiv);
+            });
+        }
+        
+        function addExpense() {
+            const descriptionInput = document.getElementById('expense-description');
+            const amountInput = document.getElementById('expense-amount');
+            
+            const description = descriptionInput.value.trim();
+            const amount = parseFloat(amountInput.value) || 0;
+
+            if (description === "" || amount <= 0) {
+                alert("Mohon masukkan deskripsi dan jumlah pengeluaran yang valid.");
+                return;
+            }
+
+            const newExpense = {
+                description: description,
+                amount: amount,
+                timestamp: new Date().toLocaleTimeString('id-ID')
+            };
+
+            expensesList.push(newExpense);
+            totalExpenses += amount;
+
+            saveRevenueData();
+            
+            renderExpensesList();
+            updateRevenueReport();
+
+            descriptionInput.value = '';
+            amountInput.value = '0';
+        }
+        
+        function renderExpensesList() {
+            const listDiv = document.getElementById('expense-list');
+            listDiv.innerHTML = '';
+            
+            expensesList.forEach(expense => {
+                const p = document.createElement('p');
+                p.innerHTML = `(${expense.timestamp}) <b>${expense.description}</b>: <span class="red-text">${formatRupiah(expense.amount)}</span>`;
+                listDiv.appendChild(p);
+            });
+
+            document.getElementById('total-expense-display').textContent = formatRupiah(totalExpenses);
+        }
+        
+        // --- 6. FUNGSI PELAPORAN & RESET ---
+
+        function updateRevenueReport() {
+            const totalGross = totalRevenueCash + totalRevenueQris;
+            const totalNet = totalGross - totalExpenses; 
+            
+            document.getElementById('rekap_cash').textContent = formatRupiah(totalRevenueCash);
+            document.getElementById('rekap_qris').textContent = formatRupiah(totalRevenueQris);
+            document.getElementById('rekap_expense').textContent = formatRupiah(totalExpenses);
+            document.getElementById('rekap_grand_total').textContent = formatRupiah(totalNet);
+        }
+        
+        function updateReport() {
+            const reportDiv = document.getElementById('report-info');
+            reportDiv.innerHTML = '';
+            
+            products.forEach(product => {
+                const stokSisa = product.stokAwal - product.terjual;
+                const p = document.createElement('p');
+                
+                const colorClass = stokSisa <= 5 ? 'red-text' : 'green-text';
+
+                p.innerHTML = `<strong>${product.name}:</strong> Stok Harian: ${product.stokAwal.toFixed(1)}, Terjual: <span class="green-text">${product.terjual.toFixed(1)}</span>, Sisa Stok: <span class="${colorClass}">${stokSisa.toFixed(1)}</span>`;
+                reportDiv.appendChild(p);
+            });
+        }
+        
+        function endDayAndClearData() {
+            if (orderQueue.length > 0) {
+                const queueConfirm = confirm(`PERINGATAN: Masih ada ${orderQueue.length} pesanan di antrian. Mohon selesaikan pesanan tersebut sebelum mengakhiri hari.\nApakah Anda yakin ingin tetap melanjutkan reset (pesanan di antrian akan HILANG)?`);
+                if (!queueConfirm) {
+                    return; 
+                }
+            }
+
+            const confirmation = confirm("Apakah Anda yakin ingin MENGAKHIRI HARI KERJA? Laporan Z-Report akan dibuat, dan semua
