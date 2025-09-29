@@ -460,9 +460,8 @@
         }
 
 
-        // 4. Fungsi updateChange (Realtime Split Payment) - Tetap sama
+        // 4. Fungsi updateChange (Realtime Split Payment) - Perbaikan tampilan kembalian
         function updateChange() {
-            // ... (Kode updateChange sama) ...
             const totalDisplay = document.getElementById('total-belanja').textContent;
             const totalBelanja = parseFloat(totalDisplay.replace(/[^0-9]/g, '')) || 0; 
             
@@ -476,29 +475,31 @@
 
             if (totalUangMasuk > 0) {
                 const kembalian = totalUangMasuk - totalBelanja;
-                kembalianDisplay.textContent = formatRupiah(kembalian);
                 
-                if (kembalian < 0) {
+                if (totalUangMasuk < totalBelanja) { // Pembayaran Kurang
+                     kembalianDisplay.textContent = formatRupiah(kembalian); // Tampilkan minus jika kurang
                      kembalianDisplay.style.color = 'red';
                      document.getElementById('total_uang_masuk').style.color = 'red';
                 } else {
+                     kembalianDisplay.textContent = formatRupiah(kembalian);
                      kembalianDisplay.style.color = '#dc3545';
                      document.getElementById('total_uang_masuk').style.color = '#007bff';
                 }
             } else {
                 kembalianDisplay.textContent = formatRupiah(0);
                 kembalianDisplay.style.color = '#dc3545'; 
+                document.getElementById('total_uang_masuk').style.color = '#007bff';
             }
         }
 
-        // 5. Fungsi Finalisasi Transaksi (Update Stok & Pendapatan)
+        // 5. Fungsi Finalisasi Transaksi (Update Stok & Pendapatan) - LOGIKA PENCATATAN KEUANGAN DIPERBAIKI
         function hitungTotal() {
             const totalDisplay = document.getElementById('total-belanja').textContent;
             const totalBelanja = parseFloat(totalDisplay.replace(/[^0-9]/g, '')) || 0; 
             
-            const uangCash = parseFloat(document.getElementById('uang_cash').value) || 0;
-            const uangQris = parseFloat(document.getElementById('uang_qris').value) || 0;
-            const totalUangMasuk = uangCash + uangQris;
+            const uangCashInput = parseFloat(document.getElementById('uang_cash').value) || 0;
+            const uangQrisInput = parseFloat(document.getElementById('uang_qris').value) || 0;
+            const totalUangMasuk = uangCashInput + uangQrisInput;
 
             if (totalBelanja === 0) {
                 alert("Keranjang belanja kosong!"); 
@@ -508,17 +509,27 @@
             if (totalUangMasuk < totalBelanja) {
                 alert(`Pembayaran kurang! Total yang harus dibayar: ${formatRupiah(totalBelanja)}.`); 
             } else {
-                let revenueCash = uangCash;
-                let revenueQris = uangQris;
                 
-                if (totalUangMasuk > totalBelanja) {
-                    revenueCash = totalBelanja - uangQris;
-                    if (revenueCash < 0) {
-                         revenueCash = 0;
-                         revenueQris = totalBelanja; 
-                    }
-                }
+                // Hitung Kembalian
+                const kembalian = totalUangMasuk - totalBelanja;
 
+                // --- LOGIKA PENCATATAN PENDAPATAN TERPISAH (CASH VS QRIS) ---
+
+                // 1. Catat QRIS (Maksimal sebesar total belanja)
+                let revenueQris = Math.min(uangQrisInput, totalBelanja); 
+                
+                // 2. Sisa pembayaran yang harus ditutup oleh Cash (setelah dikurangi QRIS)
+                const sisaPembayaran = totalBelanja - revenueQris;
+
+                // 3. Catat Cash (Maksimal sebesar sisa pembayaran)
+                let revenueCash = Math.min(uangCashInput, sisaPembayaran);
+                
+                // Double-check total pendapatan yang dicatat sama dengan totalBelanja
+                if (revenueCash + revenueQris !== totalBelanja) {
+                    // Kasus darurat (hanya jaga-jaga)
+                    revenueCash = totalBelanja - revenueQris;
+                }
+                
                 // AKUMULASI PENDAPATAN & SIMPAN KE LOCALSTORAGE
                 totalRevenueCash += revenueCash;
                 totalRevenueQris += revenueQris;
@@ -528,13 +539,12 @@
                 products.forEach(product => {
                     const quantity = currentOrderQuantities[product.id] || 0;
                     if (quantity > 0) {
-                        // Kuantitas yang terjual sekarang berupa desimal
                         product.terjual += quantity; 
                     }
                 });
                 saveProductsToStorage();
                 
-                alert(`Transaksi Selesai! Pendapatan dicatat: Tunai ${formatRupiah(revenueCash)} + QRIS ${formatRupiah(revenueQris)}.`);
+                alert(`Transaksi Selesai! Pendapatan dicatat:\nTunai: ${formatRupiah(revenueCash)}\nQRIS: ${formatRupiah(revenueQris)}\nKembalian: ${formatRupiah(kembalian)}`);
 
                 // Reset Tampilan POS dan Laporan
                 resetPOS();
@@ -567,8 +577,8 @@
                 // --- 2. KOMPILASI LAPORAN PENDAPATAN ---
                 const totalGrand = totalRevenueCash + totalRevenueQris;
                 let revenueReport = `\nLAPORAN PENDAPATAN:\n`;
-                revenueReport += `- Tunai: ${formatRupiah(totalRevenueCash)}\n`;
-                revenueReport += `- Non-Tunai: ${formatRupiah(totalRevenueQris)}\n`;
+                revenueReport += `- Tunai (Cash): ${formatRupiah(totalRevenueCash)}\n`;
+                revenueReport += `- Non-Tunai (QRIS): ${formatRupiah(totalRevenueQris)}\n`;
                 revenueReport += `TOTAL PENJUALAN: ${formatRupiah(totalGrand)}`;
                 
                 // Tampilkan laporan akhir yang lengkap
@@ -635,4 +645,3 @@
 
 </body>
 </html>
-
