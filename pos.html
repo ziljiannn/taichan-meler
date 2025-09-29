@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Taichan Setengah Porsi - Alur Antrian & Bayar (Final Fix 2)</title>
+    <title>POS Taichan Setengah Porsi - Final Stable Version</title>
     
     <style>
-        /* CSS STYLES (Dipotong untuk efisiensi, asumsikan sama) */
+        /* ====================
+           CSS STYLES
+           ==================== */
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             margin: 20px; 
@@ -355,7 +357,9 @@
     </div>
 
     <script>
-        /* JAVASCRIPT: LOGIKA POS LENGKAP */
+        /* ====================
+           JAVASCRIPT: LOGIKA POS LENGKAP (FINAL STABLE VERSION)
+           ==================== */
 
         // ===================================
         // VARIABEL GLOBAL & PERSISTENSI
@@ -381,9 +385,16 @@
         function loadProductsFromStorage() {
             const storedProducts = localStorage.getItem('products_data');
             if (storedProducts) {
-                const stored = JSON.parse(storedProducts);
-                if (stored.length === initialProductsData.length) {
-                    return stored;
+                try {
+                    const stored = JSON.parse(storedProducts);
+                    // Perbaikan di sini: Pastikan stored adalah array dan ukurannya sama
+                    if (Array.isArray(stored) && stored.length === initialProductsData.length) {
+                        return stored;
+                    }
+                } catch (e) {
+                    // Jika data di storage corrupt, kembalikan null agar menggunakan initialProductsData
+                    console.error("Local Storage for products is corrupted.", e);
+                    return null;
                 }
             }
             return null; 
@@ -412,10 +423,11 @@
             localStorage.setItem('order_counter', orderCounter);
         }
         
-        // --- 1. FUNGSI STOK HARIAN (FIXED) ---
+        // --- 1. FUNGSI STOK HARIAN ---
 
         function loadDailyStockInputs() {
             const container = document.getElementById('daily-stock-container');
+            if (!container) return; // Tambahkan cek untuk keamanan
             container.innerHTML = '';
             
             products.forEach(product => {
@@ -455,7 +467,7 @@
             }
         }
         
-        // --- FUNGSI BARU UNTUK MEMPERBARUI KOLOM STOK DI TABEL UTAMA ---
+        // --- FUNGSI UNTUK MEMPERBARUI KOLOM STOK DI TABEL UTAMA (FIX DELAY) ---
         function updateStockTableDisplay() {
             products.forEach(product => {
                 const stokSisa = product.stokAwal - product.terjual;
@@ -612,7 +624,7 @@
             
             saveProductsToStorage();
             
-            // Perbaikan ada di sini: Panggil fungsi baru untuk update display stok
+            // Perbaikan untuk update display stok real-time
             updateStockTableDisplay(); 
 
             const newOrder = {
@@ -829,4 +841,72 @@
             
             if (confirmation) {
                 // --- KOMPILASI LAPORAN ---
-                let stockReport = "LAPORAN SISA STOK HARI INI
+                let stockReport = "LAPORAN SISA STOK HARI INI:\n";
+                products.forEach(p => {
+                    const sisa = (p.stokAwal - p.terjual).toFixed(1); 
+                    stockReport += `- ${p.name}: Stok Awal ${p.stokAwal.toFixed(1)}, Terjual ${p.terjual.toFixed(1)}, Sisa ${sisa}\n`;
+                });
+                
+                const totalGross = totalRevenueCash + totalRevenueQris;
+                const totalNet = totalGross - totalExpenses;
+                let revenueReport = `\nLAPORAN PENDAPATAN:\n`;
+                revenueReport += `- Penjualan Tunai: ${formatRupiah(totalRevenueCash)}\n`;
+                revenueReport += `- Penjualan Non-Tunai (QRIS): ${formatRupiah(totalRevenueQris)}\n`;
+                revenueReport += `TOTAL PENDAPATAN KOTOR: ${formatRupiah(totalGross)}\n`;
+                
+                let expenseReport = `\nLAPORAN PENGELUARAN (${formatRupiah(totalExpenses)}):\n`;
+                if (expensesList.length > 0) {
+                    expenseReport += "-- Daftar Pengeluaran Harian --\n";
+                    expensesList.forEach(e => {
+                        expenseReport += `-- [${e.timestamp}] ${e.description}: ${formatRupiah(e.amount)}\n`;
+                    });
+                } else {
+                    expenseReport += "-- Tidak ada pengeluaran dicatat.\n";
+                }
+                
+                let finalReport = `\nTOTAL PENDAPATAN BERSIH: ${formatRupiah(totalNet)}`;
+
+                alert(`----- Z-REPORT LENGKAP -----\n\n${stockReport}\n${revenueReport}\n${expenseReport}\n${finalReport}\n\n------------------------------\nData hari ini akan direset.`);
+                
+                // --- RESET DATA ---
+                
+                products = JSON.parse(JSON.stringify(initialProductsData));
+                localStorage.clear(); 
+                
+                totalRevenueCash = 0;
+                totalRevenueQris = 0;
+                totalExpenses = 0;
+                expensesList = [];
+                orderQueue = [];
+                orderCounter = 1;
+                
+                // Reset tampilan
+                updateRevenueReport(); 
+                loadDailyStockInputs();
+                loadProductsTable(); 
+                renderExpensesList();
+                renderOrderQueue(); 
+                alert("Sistem telah direset. Siap untuk hari baru!");
+            }
+        }
+
+        // --- INISIALISASI ---
+        window.onclick = function(event) {
+            const modal = document.getElementById('paymentModal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        window.onload = function() {
+            // Memastikan input stok harian dimuat saat halaman pertama kali dibuka
+            loadDailyStockInputs(); 
+            // Kemudian baru memuat tabel produk dan laporan lainnya
+            loadProductsTable(); 
+            updateSubtotal();
+            renderExpensesList(); 
+        };
+    </script>
+
+</body>
+</html>
