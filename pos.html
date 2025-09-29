@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Taichan Setengah Porsi LENGKAP</title>
+    <title>POS Taichan Setengah Porsi LENGKAP - FIX</title>
     
     <style>
         /* ====================
@@ -411,7 +411,6 @@
         // ===================================
         // VARIABEL GLOBAL & PERSISTENSI
         // ===================================
-        // Ambil data dari Local Storage atau set ke 0/nilai default
         let totalRevenueCash = parseFloat(localStorage.getItem('revenue_cash')) || 0;
         let totalRevenueQris = parseFloat(localStorage.getItem('revenue_qris')) || 0;
         let totalExpenses = parseFloat(localStorage.getItem('total_expenses')) || 0;
@@ -420,7 +419,6 @@
         let currentOrderQuantities = {};
         let orderCounter = parseInt(localStorage.getItem('order_counter')) || 1; 
         
-        // Data Produk Awal sesuai gambar Anda
         const initialProductsData = [
             { id: 1, name: "Campur", price: 25000, priceHalf: 17000, stokAwal: 0, terjual: 0 },
             { id: 2, name: "Kulit", price: 25000, priceHalf: 17000, stokAwal: 0, terjual: 0 },
@@ -433,13 +431,12 @@
         function loadProductsFromStorage() {
             const storedProducts = localStorage.getItem('products_data');
             if (storedProducts) {
-                // Periksa apakah produk di storage masih sesuai dengan template
                 const stored = JSON.parse(storedProducts);
                 if (stored.length === initialProductsData.length) {
                     return stored;
                 }
             }
-            return null; // Gunakan data awal jika tidak ada/tidak valid
+            return null; 
         }
 
         function saveProductsToStorage() {
@@ -465,7 +462,7 @@
             localStorage.setItem('order_counter', orderCounter);
         }
         
-        // --- 1. FUNGSI STOK HARIAN ---
+        // --- 1. FUNGSI STOK HARIAN (FIXED) ---
 
         function loadDailyStockInputs() {
             const container = document.getElementById('daily-stock-container');
@@ -475,6 +472,7 @@
                 const div = document.createElement('div');
                 div.style.display = 'flex';
                 div.style.alignItems = 'center';
+                // REVISI: Memastikan input dan label terpasang
                 div.innerHTML = `
                     <label for="input-stok-${product.id}">${product.name}:</label>
                     <input type="number" id="input-stok-${product.id}" min="0" step="0.5" value="${product.stokAwal.toFixed(1)}">
@@ -490,7 +488,6 @@
                 const inputElement = document.getElementById(`input-stok-${product.id}`);
                 const stokBaru = parseFloat(inputElement.value) || 0; 
                 
-                // Jika stok berubah, reset jumlah terjual untuk hari itu
                 if (stokBaru !== product.stokAwal) {
                      product.terjual = 0; 
                 }
@@ -537,7 +534,7 @@
                 quantityInput.className = 'qty-input'; 
                 quantityInput.value = '0';
                 quantityInput.id = `qty-${product.id}`; 
-                quantityInput.setAttribute('inputmode', 'decimal'); // Memungkinkan input desimal di HP
+                quantityInput.setAttribute('inputmode', 'decimal'); 
                 quantityInput.addEventListener('input', updateSubtotal); 
                 quantityCell.appendChild(quantityInput);
 
@@ -568,7 +565,7 @@
                 const quantityInput = document.getElementById(`qty-${product.id}`);
                 const subtotalDisplay = document.getElementById(`sub-${product.id}`);
                 
-                let rawQuantity = quantityInput.value.replace(',', '.'); // Handle koma sebagai desimal
+                let rawQuantity = quantityInput.value.replace(',', '.'); 
                 const quantity = parseFloat(rawQuantity) || 0; 
                 
                 const stokTersedia = product.stokAwal - product.terjual;
@@ -576,7 +573,7 @@
                 if (quantity > stokTersedia) {
                     alert(`Stok ${product.name} yang tersisa hanya ${stokTersedia.toFixed(1)} unit! Jumlah pembelian direset.`);
                     
-                    const newQuantity = Math.floor(stokTersedia * 2) / 2; // Membulatkan ke 0.5 terdekat yang lebih rendah
+                    const newQuantity = Math.floor(stokTersedia * 2) / 2; 
                     quantityInput.value = newQuantity.toFixed(1); 
                     
                     currentOrderQuantities[product.id] = newQuantity;
@@ -602,7 +599,6 @@
             if (quantity <= 0) return 0;
 
             const fullPorsi = Math.floor(quantity); 
-            // Cek apakah ada sisa 0.5
             const halfPorsi = quantity % 1 === 0.5 ? 1 : 0; 
 
             let total = (fullPorsi * product.price);
@@ -747,7 +743,6 @@
             const index = orderQueue.findIndex(order => order.id === orderId);
             
             if (index > -1) {
-                // Hapus pesanan dari antrian
                 orderQueue.splice(index, 1);
                 saveRevenueData();
                 
@@ -802,7 +797,7 @@
             document.getElementById('total-expense-display').textContent = formatRupiah(totalExpenses);
         }
         
-        // --- 5. FUNGSI PELAPORAN ---
+        // --- 5. FUNGSI PELAPORAN & RESET ---
 
         function updateRevenueReport() {
             const totalGross = totalRevenueCash + totalRevenueQris;
@@ -844,4 +839,76 @@
                 let stockReport = "LAPORAN SISA STOK HARI INI:\n";
                 products.forEach(p => {
                     const sisa = (p.stokAwal - p.terjual).toFixed(1); 
-                    stockReport += `- ${p.name}:
+                    stockReport += `- ${p.name}: Stok Awal ${p.stokAwal.toFixed(1)}, Terjual ${p.terjual.toFixed(1)}, Sisa ${sisa}\n`;
+                });
+                
+                const totalGross = totalRevenueCash + totalRevenueQris;
+                const totalNet = totalGross - totalExpenses;
+                let revenueReport = `\nLAPORAN PENDAPATAN:\n`;
+                revenueReport += `- Penjualan Tunai: ${formatRupiah(totalRevenueCash)}\n`;
+                revenueReport += `- Penjualan Non-Tunai (QRIS): ${formatRupiah(totalRevenueQris)}\n`;
+                revenueReport += `TOTAL PENDAPATAN KOTOR: ${formatRupiah(totalGross)}\n`;
+                
+                let expenseReport = `\nLAPORAN PENGELUARAN (${formatRupiah(totalExpenses)}):\n`;
+                if (expensesList.length > 0) {
+                    expenseReport += "-- Daftar Pengeluaran Harian --\n";
+                    expensesList.forEach(e => {
+                        expenseReport += `-- [${e.timestamp}] ${e.description}: ${formatRupiah(e.amount)}\n`;
+                    });
+                } else {
+                    expenseReport += "-- Tidak ada pengeluaran dicatat.\n";
+                }
+                
+                let finalReport = `\nTOTAL PENDAPATAN BERSIH: ${formatRupiah(totalNet)}`;
+
+                alert(`----- Z-REPORT LENGKAP -----\n\n${stockReport}\n${revenueReport}\n${expenseReport}\n${finalReport}\n\n------------------------------\nData hari ini akan direset.`);
+                
+                // --- RESET DATA ---
+                
+                products = JSON.parse(JSON.stringify(initialProductsData));
+                localStorage.clear(); 
+                
+                totalRevenueCash = 0;
+                totalRevenueQris = 0;
+                totalExpenses = 0;
+                expensesList = [];
+                orderQueue = [];
+                orderCounter = 1;
+                
+                // Reset tampilan
+                updateRevenueReport(); 
+                loadDailyStockInputs();
+                loadProductsTable(); 
+                renderExpensesList();
+                renderOrderQueue(); 
+                alert("Sistem telah direset. Siap untuk hari baru!");
+            }
+        }
+
+        function resetPOS() {
+            document.getElementById('uang_cash').value = 0;
+            document.getElementById('uang_qris').value = 0;
+            products.forEach(product => {
+                const qtyInput = document.getElementById(`qty-${product.id}`);
+                if (qtyInput) qtyInput.value = '0';
+                
+                const stokSisaEl = document.getElementById(`stok-sisa-${product.id}`);
+                if (stokSisaEl) stokSisaEl.textContent = (product.stokAwal - product.terjual).toFixed(1);
+                
+                currentOrderQuantities[product.id] = 0;
+            });
+            updateSubtotal();
+        }
+
+        // --- INISIALISASI ---
+
+        window.onload = function() {
+            loadDailyStockInputs(); 
+            loadProductsTable(); 
+            updateSubtotal();
+            renderExpensesList(); 
+        };
+    </script>
+
+</body>
+</html>
