@@ -748,6 +748,15 @@
                 
                 const actionsDiv = document.createElement('div');
                 actionsDiv.className = 'queue-actions';
+                
+                // TOMBOL BARU: BATALKAN PESANAN
+                const cancelButton = document.createElement('button');
+                cancelButton.textContent = 'Batalkan';
+                cancelButton.style.backgroundColor = '#6c757d'; // Warna abu-abu untuk batal
+                cancelButton.style.marginRight = '5px';
+                cancelButton.onclick = () => cancelOrder(order.id);
+                actionsDiv.appendChild(cancelButton);
+
                 const completeButton = document.createElement('button');
                 completeButton.textContent = 'Selesaikan & Bayar';
                 completeButton.onclick = () => openPaymentModal(order.id);
@@ -759,6 +768,43 @@
             });
         }
         
+        // --- FUNGSI BARU: BATALKAN PESANAN ---
+        function cancelOrder(orderId) {
+            const index = orderQueue.findIndex(order => order.id === orderId);
+            
+            if (index === -1) {
+                alert("Pesanan tidak ditemukan.");
+                return;
+            }
+            
+            const confirmation = confirm(`Yakin ingin membatalkan pesanan #${orderId}? Stok akan dikembalikan.`);
+            
+            if (confirmation) {
+                const cancelledOrder = orderQueue[index];
+                
+                // 1. Kembalikan Stok
+                cancelledOrder.items.forEach(item => {
+                    const product = products.find(p => p.id === item.id);
+                    if (product) {
+                        product.terjual -= item.quantity;
+                        if (product.terjual < 0) product.terjual = 0; // Pastikan tidak minus
+                    }
+                });
+                
+                // 2. Hapus dari Antrian
+                orderQueue.splice(index, 1);
+                
+                // 3. Simpan dan Perbarui Tampilan
+                saveProductsToStorage();
+                saveRevenueData();
+                updateStockTableDisplay();
+                updateReport();
+                renderOrderQueue();
+                
+                alert(`Pesanan #${orderId} telah dibatalkan. Stok dikembalikan.`);
+            }
+        }
+
         function addExpense() {
             const descriptionInput = document.getElementById('expense-description');
             const amountInput = document.getElementById('expense-amount');
@@ -910,4 +956,3 @@
 
 </body>
 </html>
-
